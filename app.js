@@ -10,7 +10,6 @@ let activeTag = null;
 let currentDetail = null;
 let previewEl = null;
 let previewState = null;
-
 function esc(v){return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function toast(msg, isErr = false){ toastEl.textContent = msg; toastEl.classList.toggle('err', isErr); toastEl.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => toastEl.hidden = true, 2200); }
 function guard(fn){ return (...a) => Promise.resolve(fn(...a)).catch(err => toast(err.message || String(err), true)); }
@@ -21,34 +20,11 @@ function imagePrompt(p, img){ return (img && img.prompt) || representativePrompt
 function isCoverImage(p, img){ return !!img && representative(p)?.id === img.id; }
 function toSummary(p){ const imgs = p.images || []; const cover = imgs[0] || null; return { id:p.id, title:p.title||'', source:p.source||'', tags:p.tags||[], text:(p.text||'').slice(0,140), imageCount:imgs.length, cover: cover ? { id:cover.id, thumbUrl:cover.thumbUrl || cover.displayUrl || cover.imageUrl, imageUrl:cover.displayUrl || cover.imageUrl, width:cover.width||null, height:cover.height||null } : null, createdAt:p.createdAt, updatedAt:p.updatedAt }; }
 function getDetail(id){ const p = db.prompts.find(p => p.id === id); if (!p) throw new Error('프롬프트를 찾을 수 없습니다.'); return p; }
-
-async function load(){
-  if (!db.prompts.length){ const res = await fetch('data/library.json'); if (!res.ok) throw new Error(`library.json 로드 실패: HTTP ${res.status}`); db = await res.json(); }
-  const q = search.value.trim().toLowerCase();
-  const filtered = (db.prompts || []).filter(p => !q || (p.text||'').toLowerCase().includes(q) || (p.title||'').toLowerCase().includes(q) || (p.tags||[]).some(t => String(t).toLowerCase().includes(q)));
-  currentPrompts = filtered.sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))).map(toSummary);
-  allTags = [...new Set((db.prompts || []).flatMap(p => p.tags || []))].sort((a,b)=>a.localeCompare(b));
-  if (activeTag && !allTags.includes(activeTag)) activeTag = null;
-  render();
-}
-
-function render(){
-  const list = activeTag ? currentPrompts.filter(p => (p.tags || []).includes(activeTag)) : currentPrompts;
-  countEl.textContent = currentPrompts.length ? (activeTag ? `${list.length} / ${currentPrompts.length}` : `${currentPrompts.length}`) : '';
-  tagFilter.innerHTML = allTags.length ? [`<button type="button" class="tagChip${activeTag ? '' : ' on'}" data-tag="">전체</button>`, ...allTags.map(t => `<button type="button" class="tagChip${activeTag === t ? ' on' : ''}" data-tag="${esc(t)}">${esc(t)}</button>`)].join('') : '';
-  if (!list.length){ library.innerHTML = `<p class="empty">${activeTag ? '해당 태그의 프롬프트가 없습니다.' : search.value ? '검색 결과가 없습니다.' : '저장된 프롬프트가 없습니다.'}</p>`; return; }
-  const cs = getComputedStyle(library); const avail = library.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); const gap = 12, target = window.innerWidth <= 640 ? 150 : 240; const n = Math.max(1, Math.floor((avail + gap) / (target + gap))); const colW = (avail - gap * (n - 1)) / n; const cols = Array.from({ length:n }, () => []); const heights = new Array(n).fill(0);
-  for (const p of list){
-    const img = p.cover; const label = esc(p.title || p.text.slice(0,60) || '무제'); const count = p.imageCount > 1 ? `<span class="countMark">${p.imageCount}</span>` : ''; const ratio = img?.width && img?.height ? img.height / img.width : 1; const ar = img?.width && img?.height ? ` style="aspect-ratio:${img.width} / ${img.height}"` : ''; const body = img ? `<img src="${esc(img.thumbUrl || img.imageUrl)}"${ar} loading="lazy" alt="">` : `<div class="ph">이미지 없음</div>`;
-    let i = 0; for (let k = 1; k < n; k++) if (heights[k] < heights[i]) i = k; heights[i] += colW * ratio + 37 + gap;
-    cols[i].push(`<article class="tile${img ? '' : ' emptyTile'}" data-open="${p.id}"><button class="tileBtn" type="button">${body}</button><div class="tileMeta"><span class="t">${label}</span>${count}</div></article>`);
-  }
-  library.innerHTML = cols.map(c => `<div class="mcol">${c.join('')}</div>`).join('');
-}
+async function load(){ if (!db.prompts.length){ const res = await fetch('data/library.json'); if (!res.ok) throw new Error(`library.json 로드 실패: HTTP ${res.status}`); db = await res.json(); } const q = search.value.trim().toLowerCase(); const filtered = (db.prompts || []).filter(p => !q || (p.text||'').toLowerCase().includes(q) || (p.title||'').toLowerCase().includes(q) || (p.tags||[]).some(t => String(t).toLowerCase().includes(q))); currentPrompts = filtered.sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))).map(toSummary); allTags = [...new Set((db.prompts || []).flatMap(p => p.tags || []))].sort((a,b)=>a.localeCompare(b)); if (activeTag && !allTags.includes(activeTag)) activeTag = null; render(); }
+function render(){ const list = activeTag ? currentPrompts.filter(p => (p.tags || []).includes(activeTag)) : currentPrompts; countEl.textContent = currentPrompts.length ? (activeTag ? `${list.length} / ${currentPrompts.length}` : `${currentPrompts.length}`) : ''; tagFilter.innerHTML = allTags.length ? [`<button type="button" class="tagChip${activeTag ? '' : ' on'}" data-tag="">전체</button>`, ...allTags.map(t => `<button type="button" class="tagChip${activeTag === t ? ' on' : ''}" data-tag="${esc(t)}">${esc(t)}</button>`)].join('') : ''; if (!list.length){ library.innerHTML = `<p class="empty">${activeTag ? '해당 태그의 프롬프트가 없습니다.' : search.value ? '검색 결과가 없습니다.' : '저장된 프롬프트가 없습니다.'}</p>`; return; } const cs = getComputedStyle(library); const avail = library.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); const gap = 12, target = window.innerWidth <= 640 ? 150 : 240; const n = Math.max(1, Math.floor((avail + gap) / (target + gap))); const colW = (avail - gap * (n - 1)) / n; const cols = Array.from({ length:n }, () => []); const heights = new Array(n).fill(0); for (const p of list){ const img = p.cover; const label = esc(p.title || p.text.slice(0,60) || '무제'); const count = p.imageCount > 1 ? `<span class="countMark">${p.imageCount}</span>` : ''; const ratio = img?.width && img?.height ? img.height / img.width : 1; const ar = img?.width && img?.height ? ` style="aspect-ratio:${img.width} / ${img.height}"` : ''; const body = img ? `<img src="${esc(img.thumbUrl || img.imageUrl)}"${ar} loading="lazy" alt="">` : `<div class="ph">이미지 없음</div>`; let i = 0; for (let k = 1; k < n; k++) if (heights[k] < heights[i]) i = k; heights[i] += colW * ratio + 37 + gap; cols[i].push(`<article class="tile${img ? '' : ' emptyTile'}" data-open="${p.id}"><button class="tileBtn" type="button">${body}</button><div class="tileMeta"><span class="t">${label}</span>${count}</div></article>`); } library.innerHTML = cols.map(c => `<div class="mcol">${c.join('')}</div>`).join(''); }
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(render, 150); });
 tagFilter.addEventListener('click', e => { const btn = e.target.closest('[data-tag]'); if (!btn) return; activeTag = btn.dataset.tag || null; render(); });
 library.addEventListener('click', e => { const btn = e.target.closest('[data-open]'); if (!btn) return; guard(openPreview)(btn.dataset.open, 0); });
-
 async function openPreview(promptId, index = 0){ currentDetail = getDetail(promptId); previewState = { promptId, index }; if (!previewEl){ previewEl = document.createElement('div'); previewEl.className = 'overlay'; previewEl.innerHTML = `<div class="shade" data-close="1"></div><article class="previewDialog"><div class="viewer"><div class="viewerMain"><img data-img alt=""><button class="navBtn prev" type="button" data-nav="-1">‹</button><button class="navBtn next" type="button" data-nav="1">›</button><div class="counter" data-counter></div></div><div class="emptyViewer" data-noimg hidden>이미지 없음</div><div class="thumbStrip" data-strip></div></div><aside class="infoPanel" data-panel></aside></article>`; document.body.appendChild(previewEl); previewEl.addEventListener('click', e => { if (e.target.dataset.close) closePreview(); }); previewEl.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => navigate(Number(b.dataset.nav)))); } paint(); }
 function navigate(delta){ if (!currentDetail) return; previewState.index += delta; paint(); }
 function closePreview(){ previewEl?.remove(); previewEl = null; previewState = null; currentDetail = null; }
