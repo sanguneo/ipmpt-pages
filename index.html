@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IPMPT</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">IPMPT<span id="count" class="count"></span></div>
+    <input id="search" class="search" type="search" placeholder="검색 (제목·프롬프트·태그)" />
+    <label class="nsfwToggle" title="체크하면 NSFW 썸네일 블러를 해제합니다"><input id="showNsfw" type="checkbox" />NSFW</label>
+  </header>
+  <nav id="tagFilter" class="tagFilter"></nav>
+  <main id="library" class="masonry"></main>
+  <div id="toast" class="toast" hidden></div>
+  <script src="app.js" type="module"></script>
+</body>
+</html>
